@@ -34,5 +34,7 @@ Start the flask server to start monitoring
 ```bash
   python3 monitor.py
 ```
+Any changes, suggestions, Pull requests are welcomed !!! 
+                       (◕‿◕)
 
 
