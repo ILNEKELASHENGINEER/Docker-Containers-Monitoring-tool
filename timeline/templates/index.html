@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Docker Monitoring</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <select id="timeRange">
+        <option value="30min">Last 30 mins</option>
+        <option value="1hr">Last 1 hr</option>
+        <option value="2hr">Last 2 hrs</option>
+        <option value="6hr">Last 6 hrs</option>
+        <option value="12hr">Last 12 hrs</option>
+        <option value="24hr">Last 24 hrs</option>
+    </select>
+
+    <canvas id="cpuChart" width="600" height="400"></canvas>
+    <canvas id="memoryChart" width="600" height="400"></canvas>
+
+    <script>
+        const ctxCpu = document.getElementById('cpuChart').getContext('2d');
+        const ctxMemory = document.getElementById('memoryChart').getContext('2d');
+        let cpuChart = new Chart(ctxCpu, { type: 'line', data: { labels: [], datasets: [] } });
+        let memoryChart = new Chart(ctxMemory, { type: 'line', data: { labels: [], datasets: [] } });
+
+        function fetchData() {
+            const duration = document.getElementById('timeRange').value;
+            fetch(`/api/monitoring-data?duration=${duration}`)
+                .then(response => response.json())
+                .then(data => {
+                    updateCharts(data);
+                });
+        }
+
+        function updateCharts(data) {
+            const cpuLabels = data.cpu_usage.map(entry => new Date(entry.timestamp).toLocaleTimeString());
+            const memoryLabels = data.memory_usage.map(entry => new Date(entry.timestamp).toLocaleTimeString());
+
+            const cpuDatasets = {};
+            const memoryDatasets = {};
+
+            data.cpu_usage.forEach(entry => {
+                if (!cpuDatasets[entry.container]) {
+                    cpuDatasets[entry.container] = [];
+                }
+                cpuDatasets[entry.container].push(entry.cpu_usage);
+            });
+
+            data.memory_usage.forEach(entry => {
+                if (!memoryDatasets[entry.container]) {
+                    memoryDatasets[entry.container] = [];
+                }
+                memoryDatasets[entry.container].push(entry.memory_usage);
+            });
+
+            cpuChart.data.labels = cpuLabels;
+            cpuChart.data.datasets = Object.keys(cpuDatasets).map((container, index) => ({
+                label: container,
+                data: cpuDatasets[container],
+                borderColor: `hsl(${index * 60}, 100%, 50%)`,
+                fill: false
+            }));
+            cpuChart.update();
+
+            memoryChart.data.labels = memoryLabels;
+            memoryChart.data.datasets = Object.keys(memoryDatasets).map((container, index) => ({
+                label: container,
+                data: memoryDatasets[container],
+                borderColor: `hsl(${index * 60}, 100%, 50%)`,
+                fill: false
+            }));
+            memoryChart.update();
+        }
+
+        document.getElementById('timeRange').addEventListener('change', fetchData);
+
+        // Initial fetch
+        fetchData();
+    </script>
+</body>
+</html>
